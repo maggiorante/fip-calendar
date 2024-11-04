@@ -4,6 +4,9 @@ from ics import Calendar, Event
 from datetime import datetime, timedelta
 import re
 import sqlite3
+import pytz
+
+rome = pytz.timezone('Europe/Rome')
 
 months_italian = ['gennaio', 'febbraio', 'marzo',
                   'aprile', 'maggio', 'giugno',
@@ -11,6 +14,7 @@ months_italian = ['gennaio', 'febbraio', 'marzo',
                   'ottobre', 'novembre', 'dicembre']
 
 url = 'https://fip.it/risultati/?group=campionati-regionali&regione_codice=LO&comitato_codice=PBG&sesso=M&codice_campionato=2DM&codice_fase=1&codice_girone=58790&codice_ar=1&giornata=10'
+url = 'https://fip.it/risultati/?group=campionati-regionali&regione_codice=LO&comitato_codice=PBG&sesso=M&codice_campionato=2DM&codice_fase=1&codice_girone=66868&codice_ar=1&giornata=1'
 
 r = requests.get(url)
 
@@ -87,9 +91,9 @@ for result in main_soup.find_all('div', {'class': results_calendar_class})[0].fi
 
         e = Event()
         e.name = teams
-        e.begin = datetime.strptime(match_date + ' ' + match_time, '%d %m %Y %H:%M')
-        e.end = e.begin + timedelta(hours = 1)
-        e.last_modified = datetime.now()
+        e.begin = datetime.strptime(match_date + ' ' + match_time + ' +01:00', '%d %m %Y %H:%M %z')
+        e.end = e.begin + timedelta(hours = 2)
+        e.last_modified = datetime.now(rome)
         e.location = infos['Campo di gioco']
         e.description = description
         e.uid = match_ref
