@@ -3,7 +3,6 @@ import requests
 from ics import Calendar, Event
 from datetime import datetime, timedelta
 import re
-import sqlite3
 import pytz
 
 rome = pytz.timezone('Europe/Rome')
@@ -13,8 +12,7 @@ months_italian = ['gennaio', 'febbraio', 'marzo',
                   'luglio', 'agosto', 'settembre',
                   'ottobre', 'novembre', 'dicembre']
 
-url = 'https://fip.it/risultati/?group=campionati-regionali&regione_codice=LO&comitato_codice=PBG&sesso=M&codice_campionato=2DM&codice_fase=1&codice_girone=58790&codice_ar=1&giornata=10'
-url = 'https://fip.it/risultati/?group=campionati-regionali&regione_codice=LO&comitato_codice=PBG&sesso=M&codice_campionato=2DM&codice_fase=1&codice_girone=66868&codice_ar=1&giornata=1'
+url = 'https://fip.it/risultati/?group=campionati-regionali&regione_codice=LO&comitato_codice=PBG&sesso=M&codice_campionato=2DM&codice_fase=1&codice_girone=75439&codice_ar=1&giornata=1'
 
 r = requests.get(url)
 
@@ -46,7 +44,7 @@ for result in main_soup.find_all('div', {'class': results_calendar_class})[0].fi
         time_element = matches[i].find('div', {'class': time_class})
         ref_element = matches[i].find('div', {'class': ref_class})
         info_elements = matches[i].find_all('div', {'class': info_class})
-
+        
         infos = dict()
         for info_element in info_elements:
             info_label = info_element.find('div', {'class': info_label_class})
@@ -60,18 +58,17 @@ for result in main_soup.find_all('div', {'class': results_calendar_class})[0].fi
                     info_value = info_value.replace('( ', '(')
                 infos[info_label] = info_value
 
-        teams = ''
+        teams = []
         for team_element in team_elements:
-            if len(teams) != 0:
-                teams += ' vs '
             team_name = team_element.find('div', {'class': team_name_class})
-            team_points = team_element.find('div', {'class': team_points_class})
             team_name = team_name.string.strip()
-            team_points = team_points.string.strip()
-            teams += team_name
-            if len(team_points) != 0:
-                teams += f' ({team_points})'
+            teams.append(team_name)
 
+        if "TEAM BRUSAPORTO" not in teams:
+            continue
+
+        event_name = " vs ".join(teams)
+        
         match_time = time_element.string.strip()
         match_date = date_element.string.strip()
         match_ref = ref_element.string.strip()
@@ -82,20 +79,14 @@ for result in main_soup.find_all('div', {'class': results_calendar_class})[0].fi
                 match_date = insensitive.sub(format(j + 1, '02d'), match_date)
                 break
 
-
-        description = ''
-        for label, value in infos.items():
-            if label not in ['Campo di gioco']:
-                description += f'{label}: {value}\n'
-
-
         e = Event()
-        e.name = teams
-        e.begin = datetime.strptime(match_date + ' ' + match_time + ' +01:00', '%d %m %Y %H:%M %z')
+        e.name = event_name
+        d = datetime.strptime(match_date + ' ' + match_time,'%d %m %Y %H:%M')
+        d = rome.localize(d)
+        e.begin = d
         e.end = e.begin + timedelta(hours = 2)
         e.last_modified = datetime.now(rome)
         e.location = infos['Campo di gioco']
-        e.description = description
         e.uid = match_ref
         c.events.add(e)
 
